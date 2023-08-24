@@ -16,6 +16,7 @@ export class AuthService {
         if (!this.accessToken) {
             await this.fetchAccessToken();
         }
+        //console.log(this.accessToken);
         return this.accessToken;
     }
 
@@ -25,10 +26,7 @@ export class AuthService {
         const clientID = this.configService.get<string>('CLIENT_ID')
         const clientSecret = this.configService.get<string>('CLIENT_SECRET')
         const accountID = this.configService.get<string>('ACCOUNT_ID')
-        //const clientID = ''
-        //const clientSecret = ''
-        //const accountID = ''
-
+      
         const authHeader = Buffer.from(`${clientID}:${clientSecret}`).toString('base64');
 
         try {

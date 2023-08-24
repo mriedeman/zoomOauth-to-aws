@@ -1,3 +1,5 @@
+#sensitive info
+api_data/
 #environment
 .env
 # compiled output
