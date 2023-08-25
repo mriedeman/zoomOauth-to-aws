@@ -9,4 +9,9 @@ export class ZoomController {
     async update_users(): Promise<any>{
         return await this.zoomService.updateUsers()
     }
+
+    @Get('legacy-data')
+    async collect_legacy_data(): Promise<any>{
+        return await this.zoomService.collectLegacyData()
+    }
 }
