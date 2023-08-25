@@ -25,6 +25,7 @@
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^9.0.0",
     "@nestjs/platform-express": "^9.0.0",
+    "aws-sdk": "^2.1445.0",
     "axios": "^1.4.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0"

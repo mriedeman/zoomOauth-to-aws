@@ -2,17 +2,27 @@ import { Injectable} from '@nestjs/common';
 import {HttpService} from '@nestjs/axios'
 import { AxiosResponse } from 'axios';
 import { firstValueFrom } from 'rxjs';
-
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from 'src/auth/auth.service';
 import { existsSync, mkdirSync, writeFileSync, readFileSync,} from 'fs';
+
+import * as AWS from 'aws-sdk';
 @Injectable()
 export class ZoomService {
     private readonly baseUrl: string = 'https://api.zoom.us/v2';
     private accessToken: string; //Call Oauth Service to populate this value
 
-    constructor(private httpService: HttpService,
-                private authService: AuthService){}
+    //aws creds
+    s3 = new AWS.S3({
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    });
 
+    constructor(private httpService: HttpService,
+                private authService: AuthService,
+                private readonly configService: ConfigService){}
+    
+    //=================COLLECT ALL USER INFO REQUIRED TO RETRIEVE DOWNLOAD_URLS=================
     async updateUsers(): Promise<any> {
         try {
             const token = await this.authService.getAccessToken();
@@ -49,6 +59,32 @@ export class ZoomService {
             console.error('Error fetching users:', error)
         }
     }
+    //=================RETRIEVE DOWNLOAD_URLS FOR BOTH LEGACY DATA AND WEEKLY DATA TRANSFERS=================
+    getPreviousWeekDates(): [string, string] {
+        // Get current date and subtract 7 days to get the date one week ago
+        const today = new Date();
+        today.setDate(today.getDate() - 7);
+        
+        // Calculate the start of the previous week (Monday)
+        const start_date = new Date(today);
+        start_date.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); //getDay() returns 0 for Sunday
+        
+        // Calculate the end of the previous week (Sunday)
+        const end_date = new Date(start_date);
+        end_date.setDate(start_date.getDate() + 6);
+        
+        // Format dates as YYYY-MM-DD
+        const formatDate = (date: Date): string => {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');  // January is 0!
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+        
+        return [formatDate(start_date), formatDate(end_date)];
+    }
+    
+    
 
     //generate dates to collect legacy data
     legacyDates(): [string, string][] {
@@ -110,4 +146,98 @@ export class ZoomService {
             }
         }
     }
+
+    async collectWeeklyData(start_date?: string, end_date?: string) {
+        if (!start_date || !end_date) {
+            [start_date, end_date] = this.getPreviousWeekDates();
+        }
+
+        const users = JSON.parse(readFileSync('./api_data/users/users.json', 'utf8'));
+
+        for (const user of users.users) {
+            const userFirstName = user.first_name;
+            const userLastName = user.last_name;
+            const userId = user.id;
+
+            const now = new Date();
+            if (new Date(end_date) > now) break;
+
+            const token = await this.authService.getAccessToken();
+            const headers = { 'Authorization': `Bearer ${token}` };
+            const params = { from: start_date, to: end_date };
+
+            let response = await firstValueFrom(this.httpService.get(`${this.baseUrl}/users/${userId}/recordings`, { headers, params }));
+            let recordingsData = response.data;
+
+            let nextPageToken = recordingsData.next_page_token;
+            while (nextPageToken) {
+                const nextPageParams = { ...params, next_page_token: nextPageToken };
+                response = await firstValueFrom(this.httpService.get(`${this.baseUrl}/users/${userId}/recordings`, { headers, params: nextPageParams }));
+                
+                const nextPageData = response.data;
+                recordingsData.meetings = recordingsData.meetings.concat(nextPageData.meetings);
+                if (nextPageToken === nextPageData.next_page_token) break;
+
+                nextPageToken = nextPageData.next_page_token;
+            }
+
+            const directory = `./api_data/weekly_recordings/${userFirstName} ${userLastName} ${userId}`;
+            if (!existsSync(directory)) {
+                mkdirSync(directory, { recursive: true });
+            }
+
+            const filename = `${directory}/${start_date} to ${end_date}.json`;
+            writeFileSync(filename, JSON.stringify(recordingsData));
+            console.log(`Successfully Saved file: ${filename}`);
+        }
+
+        console.log(`DATA COLLECTION COMPLETE AT ${new Date()}`);
+    }
+
+    //=================USE DOWNLOAD_URLS TO MIGRATE MP4 VIDEOS AND THEIR TRANSCRIPTS TO AWS=================
+
+    async uploadFileToS3(downloadUrl: string, filename: string, firstName: string, lastName: string, fileExtension: string) {
+        const token = this.authService.getAccessToken()
+        const response: AxiosResponse = await firstValueFrom(this.httpService.get(`${downloadUrl}?access_token=${token}`, {
+            responseType: 'arraybuffer'
+        }));
+    
+        const s3ObjectKey = `${firstName}_${lastName}/${filename}.${fileExtension}`;
+    
+        await this.s3.putObject({
+            Bucket: this.configService.get<string>('S3_BUCKET_NAME'),
+            Key: s3ObjectKey,
+            Body: response.data
+        }).promise();
+    
+        console.log(`${filename} uploaded successfully to S3 in folder ${firstName}_${lastName} with object key: ${s3ObjectKey}.`);
+    }
+    
+    async migrateFilesToAWS(jsonData: any, firstName: string, lastName: string, userId: string) {
+        for (const meeting of jsonData.meetings) {
+            for (const recording of meeting.recording_files) {
+                if (recording.file_type === "MP4" && recording.file_size > 10 * 1024 * 1024) {
+    
+                    // Upload the MP4 file
+                    const downloadUrl = recording.download_url;
+                    const date = new Date(recording.recording_start);
+                    const timestampString = date.toISOString().replace(/:/g, '-').split('.')[0];
+                    const filename = `${firstName} ${lastName} ${userId} ${timestampString}`;
+    
+                    const fileExtension = recording.file_extension.toLowerCase();
+                    await this.uploadFileToS3(downloadUrl, filename, firstName, lastName, fileExtension);
+    
+                    // Find and upload the associated transcript
+                    const transcript = meeting.recording_files.find(r => r.file_type === "TRANSCRIPT" && r.recording_start === recording.recording_start);
+                    if (transcript) {
+                        const transcriptDownloadUrl = transcript.download_url;
+                        const transcriptExtension = transcript.file_extension.toLowerCase();
+                        await this.uploadFileToS3(transcriptDownloadUrl, filename, firstName, lastName, transcriptExtension);
+                    }
+                }
+            }
+        }
+    }
 }
+
+
