@@ -38,7 +38,7 @@ npm install -g @nestjs/cli
 
 Before running any code a server-to-server OAuth application must be set up at  Zoom's [App Marketplace](https://marketplace.zoom.us/). A walkthrough can be found [here](https://developers.zoom.us/docs/internal-apps/create/).
 
-*Note:* When creating the app, be sure to add these scopes to 
+*Note:* When creating the app, be sure to add these scopes to the Zoom OAuth app: 
 <p align="center">
   <a href="https://aws.amazon.com/" target="_blank">
           <img src="./images/scopes.PNG" alt="AWS Logo" width="90%"/>
