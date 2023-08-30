@@ -134,7 +134,7 @@ export class ZoomService {
                     nextPageToken = nextPageData.next_page_token;
                 }
 
-                const directory = `./api_data/legacy_recordings_data/${userFirstName} ${userLastName}`;
+                const directory = `./api_data/legacy_recordings_data/${userFirstName} ${userLastName} ${userId}`;
                 if (!existsSync(directory)) {
                     mkdirSync(directory, {recursive: true})
                 }
