@@ -3,25 +3,17 @@
 
 
 <p align="center">
-  <table border="0">
-    <tr>
-        <td align="center">
-            <a href="https://developers.zoom.us/docs/" target="_blank">
-                <img src="https://us04static-2.zoom.us/static/6.3.15120/image/new/topNav/Zoom_logo.svg" alt="Zoom Logo" width="200"/>
-            </a>
-        </td>
-        <td align="center">
-            <a href="http://nestjs.com/" target="_blank">
-                <img src="https://nestjs.com/img/logo-small.svg" alt="Nest Logo" width="200"/>
-            </a>
-        </td>
-        <td align="center">
-            <a href="https://aws.amazon.com/" target="_blank">
-                <img src="https://futurumresearch.com/wp-content/uploads/2020/01/aws-logo.png" alt="AWS Logo" width="200"/>
-            </a>
-        </td>
-    </tr>
-  </table>
+    <a href="https://developers.zoom.us/docs/" target="_blank">
+        <img src="https://us04static-2.zoom.us/static/6.3.15120/image/new/topNav/Zoom_logo.svg" alt="Zoom Logo" width="25%" style="vertical-align: middle;"/>
+    </a>
+    &nbsp;&nbsp;
+    <a href="http://nestjs.com/" target="_blank">
+        <img src="https://nestjs.com/img/logo-small.svg" alt="Nest Logo" width="25%" style="vertical-align: middle;"/>
+    </a>
+    &nbsp;&nbsp;
+    <a href="https://aws.amazon.com/" target="_blank">
+        <img src="https://futurumresearch.com/wp-content/uploads/2020/01/aws-logo.png" alt="AWS Logo" width="25%" style="vertical-align: middle;"/>
+    </a>
 </p>
 
 
@@ -109,6 +101,8 @@ curl http://localhost:3000/zoom/update-users
 ### 2. Collect Legacy Data Or Weekly Data
 
 ***Note:*** Choose either the legacy data or weekly data functions depending on what data you are after. Legacy data collects all data for all users dating back to 2021 and is collected in 1 month intervals. Weekly Data collects the most recent week if no dates are entered, or a specified date range (typically 1 week) for all users.
+
+***Additional Note:***: Data Retrieved from zoom expires every 24 hours, so before calling a collection endpoint, first ensure that the `/zoom/update-users` has been called. Next, ensure any data you choose to migrate has a recording file that has been called within the last 24 hours.
 ### Legacy Data
 #### **Endpoint**
 - **Method**: `GET`
