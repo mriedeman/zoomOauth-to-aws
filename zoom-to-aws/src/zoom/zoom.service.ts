@@ -4,8 +4,8 @@ import { AxiosResponse } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from 'src/auth/auth.service';
-import { existsSync, mkdirSync, writeFileSync, readFileSync,} from 'fs';
-
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync} from 'fs';
+import { join } from 'path';
 import * as AWS from 'aws-sdk';
 @Injectable()
 export class ZoomService {
@@ -14,8 +14,8 @@ export class ZoomService {
 
     //aws creds
     s3 = new AWS.S3({
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
+        secretAccessKey: this.configService.get<string>('AWS_SECRET_ACCESS_KEY')
     });
 
     constructor(private httpService: HttpService,
@@ -233,6 +233,47 @@ export class ZoomService {
                         const transcriptDownloadUrl = transcript.download_url;
                         const transcriptExtension = transcript.file_extension.toLowerCase();
                         await this.uploadFileToS3(transcriptDownloadUrl, filename, firstName, lastName, transcriptExtension);
+                    }
+                }
+            }
+        }
+    }
+
+    //=================Batch Functions=================
+
+    async batchLegacyDataTransfer(start_date: string, end_date: string){
+        const recordingDirectory = './api_data/legacy_recordings_data';
+        await this.batchDataTransfer(recordingDirectory, start_date, end_date)
+    }
+
+    async batchWeeklyDataTransfer(start_date?: string, end_date?: string) {
+        if (!start_date || !end_date) {
+            [start_date, end_date] = this.getPreviousWeekDates();
+        }
+        const recordingDirectory = './api_data/weekly_recordings';
+        await this.batchDataTransfer(recordingDirectory, start_date, end_date);
+    }
+
+    private async batchDataTransfer(recordingDirectory: string, start_date: string, end_date: string) {
+        if (!existsSync(recordingDirectory)) {
+            console.error(`Directory ${recordingDirectory} does not exist.`);
+            return;
+        }
+
+        for (const userFolder of readdirSync(recordingDirectory)) {
+            const path = join(recordingDirectory, userFolder);
+            if (existsSync(path)) {
+                for (const fileName of readdirSync(path)) {
+                    if (fileName.startsWith(start_date) && fileName.endsWith(`${end_date}.json`)) {
+                        const filePath = join(recordingDirectory, userFolder, fileName);
+                        const [firstName, lastName, userId] = userFolder.split(" ");
+                        console.log(filePath);
+                        // await this.migrateFilesToAWS(
+                        //     JSON.parse(readFileSync(filePath, 'utf-8')),
+                        //     firstName,
+                        //     lastName,
+                        //     userId
+                        // );
                     }
                 }
             }
