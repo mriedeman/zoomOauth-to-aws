@@ -6,13 +6,15 @@ import { HttpModule } from '@nestjs/axios';
 import { ZoomController } from './zoom/zoom.controller';
 import { AuthService } from './auth/auth.service';
 import { ConfigModule } from '@nestjs/config';
+import { VttService } from './vtt/vtt.service';
+import { VttController } from './vtt/vtt.controller';
 
 @Module({
   imports: [HttpModule, ConfigModule.forRoot({
     isGlobal: true, // this makes the ConfigModule global, so you don't have to import it again in other modules
     envFilePath: '.env', // location of your environment file
   })],
-  controllers: [AppController, ZoomController],
-  providers: [AppService, ZoomService, AuthService],
+  controllers: [AppController, ZoomController, VttController],
+  providers: [AppService, ZoomService, AuthService, VttService],
 })
 export class AppModule {}

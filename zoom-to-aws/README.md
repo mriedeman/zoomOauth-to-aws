@@ -2,21 +2,6 @@
 # Migrating Zoom Video Data To AWS
 
 
-<p align="center">
-    <a href="https://developers.zoom.us/docs/" target="_blank">
-        <img src="https://us04static-2.zoom.us/static/6.3.15120/image/new/topNav/Zoom_logo.svg" alt="Zoom Logo" width="25%" style="vertical-align: middle;"/>
-    </a>
-    &nbsp;&nbsp;
-    <a href="http://nestjs.com/" target="_blank">
-        <img src="https://nestjs.com/img/logo-small.svg" alt="Nest Logo" width="25%" style="vertical-align: middle;"/>
-    </a>
-    &nbsp;&nbsp;
-    <a href="https://aws.amazon.com/" target="_blank">
-        <img src="https://futurumresearch.com/wp-content/uploads/2020/01/aws-logo.png" alt="AWS Logo" width="25%" style="vertical-align: middle;"/>
-    </a>
-</p>
-
-
 
 # Description
 

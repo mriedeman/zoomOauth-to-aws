@@ -216,7 +216,7 @@ export class ZoomService {
     async migrateFilesToAWS(jsonData: any, firstName: string, lastName: string, userId: string) {
         for (const meeting of jsonData.meetings) {
             for (const recording of meeting.recording_files) {
-                if (recording.file_type === "MP4" && recording.file_size > 10 * 1024 * 1024) {
+                if (recording.file_type === "MP4" && recording.file_size > 20 * 1024 * 1024) {
     
                     // Upload the MP4 file
                     const downloadUrl = recording.download_url;
