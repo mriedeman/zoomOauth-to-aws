@@ -7,12 +7,11 @@ export class VttController {
 
     @Get('download')
     async downloadVTTFiles(
-        @Query('userId') userId: string,
         @Query('startDate') startDate: string,
         @Query('endDate') endDate:string,
-        @Query('userName') userName?: string,
-    ) {
-        await this.vttService.downloadVTTFilesForUser(userId, startDate, endDate, userName);
+
+    ): Promise<any> {
+        await this.vttService.downloadVTTFilesForDateRange(startDate, endDate);
         return 'VTT files located (check console for logged paths)'; 
     }
 }

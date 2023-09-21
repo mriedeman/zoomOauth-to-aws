@@ -1,79 +1,94 @@
+import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
-import { exists, existsSync, readdirSync } from 'fs';
+import { AxiosResponse } from 'axios';
+import { exists, existsSync, mkdirSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { AuthService } from 'src/auth/auth.service';
+import { firstValueFrom } from 'rxjs';
+import { writeFileSync } from 'fs';
 
 @Injectable()
 export class VttService {
 
-    async downloadVTTFilesForUser(userId: string, start_date: string, end_date: string, userName?: string) {
+    constructor(private authService: AuthService,
+                private httpService: HttpService){}
+
+    async downloadVTTFilesForDateRange(start_date: string, end_date: string) {
         const recordingDirectory = './api_data/legacy_recordings_data';
-        const userFolder = this.findUserFolder(recordingDirectory, userId, userName)
-        console.log(userFolder);
-    
-        if (userFolder) {
+        console.log(readdirSync(recordingDirectory));
+        for (const userFolder of readdirSync(recordingDirectory)) {
             const path = join(recordingDirectory, userFolder);
-            for (const filename of readdirSync(path)) {
-                const filepath = join(path, filename);
-                console.log(filepath);
-            }
-        }
-    }
-    
 
-    // private findUserFolder(directory: string, userId: string, userName?: string): string | null {
-    //     if (!existsSync(directory)) {
-    //         console.error(`Directory ${directory} does not exist.`);
-    //         return null;
-    //     }
-    
-    //     for (const userFolder of readdirSync(directory)) {
-    //         const path = join(directory, userFolder);
-    //         if (existsSync(path)) {
-    //             const [firstName, lastName, folderUserId] = userFolder.split(" ");
-    //             const fullName = `${firstName} ${lastName}`;
-    //             if (folderUserId === userId || fullName === userName) {
-    //                 return userFolder;
-    //             }
-    //         }
-    //     }
-    //     console.error(`User folder for ${userId} or ${userName} not found`);
-    //     return null;
-    // }
-
-    private findUserFolder(directory: string, userId: string, userName?: string): string | null {
-        if (!existsSync(directory)) {
-            console.error(`Directory ${directory} does not exist.`);
-            return null;
-        }
-    
-        // First, try to find a folder that matches the userId exactly
-        for (const userFolder of readdirSync(directory)) {
-            const path = join(directory, userFolder);
             if (existsSync(path)) {
-                const folderDetails = userFolder.split(" ");
-                const folderUserId = folderDetails.slice(2).join(" ");
-                if (folderUserId === userId) {
-                    return userFolder;
-                }
-            }
-        }
-    
-        // If no folder matched the userId, then try to find a folder that matches the userName
-        if (userName) {
-            for (const userFolder of readdirSync(directory)) {
-                const path = join(directory, userFolder);
-                if (existsSync(path)) {
-                    const folderDetails = userFolder.split(" ");
-                    const fullName = folderDetails.slice(0, 2).join(" ");
-                    if (fullName === userName) {
-                        return userFolder;
+                for (const fileName of readdirSync(path)) {
+                    if (fileName.startsWith(start_date) && fileName.endsWith(`${end_date}.json`)) {
+                        const filePath = join(path, fileName);
+                        const [firstName, lastName, userId] = userFolder.split(" ");
+                        console.log(`FILE PATH: ${filePath}`);
+                        // Do whatever you want with the filePath (like downloading or processing the file)
+                        this.downloadVTTFiles(filePath, firstName, lastName, userId)
                     }
                 }
             }
         }
-    
-        console.error(`User folder for ${userId} or ${userName} not found`);
-        return null;
     }
-    
+
+    async downloadVTTFiles(jsonFilePath: any, firstName: string, lastName: string, userId){
+        const jsonData = JSON.parse(readFileSync(jsonFilePath, 'utf-8'))
+        for (const meeting of jsonData.meetings) {
+            console.log(`CHECKING FOR VTT IN MEETING: ${meeting.id}`);
+            for (const recordingFile of meeting.recording_files) {
+
+                if (recordingFile.file_type === "TRANSCRIPT" && recordingFile.file_extension === "VTT"){
+
+                    const downloadUrl = recordingFile.download_url;
+                    const date = new Date(recordingFile.recording_start);
+                    const timestampString = date.toISOString().replace(/:/g, '-').split('.')[0];
+                    const filename = `${timestampString}`;
+                    const fileExtension = recordingFile.file_extension.toLowerCase();
+
+                    const token = await this.authService.getAccessToken()
+
+                    let response: AxiosResponse | null = null;
+
+                    try {
+                        response = await firstValueFrom(this.httpService.get(`${downloadUrl}?access_token=${token}`, {
+                            responseType: 'arraybuffer'
+                        }));
+                    } catch (error) {
+                        console.error('Error fetching VTT file:', error);
+                    }
+                    
+                    if (response && response.data) {
+                        console.log(`RECEIVED DATA OF LENGTH: ${response.data.length}`);
+                        const directory = `./api_data/legacy_transcripts/${firstName} ${lastName} ${userId}`;
+                        try {
+                            if (!existsSync(directory)) {
+                                mkdirSync(directory, { recursive: true });
+                            }
+                        } catch (error) {
+                            console.error('Error creating directories:', error);
+                        }
+                    
+                        const savePath = join(directory, `${filename}.${fileExtension}`);
+                        console.log(savePath);
+                        try {
+                            writeFileSync(savePath, response.data);
+                            console.log(`Successfully Saved file: ${filename}`);
+                        } catch (error) {
+                            console.error('Error saving the file:', error);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
+                   
+                    
+                    
+               
+        
+    
+
+
