@@ -196,23 +196,25 @@ export class ZoomService {
 
     //=================USE DOWNLOAD_URLS TO MIGRATE MP4 VIDEOS AND THEIR TRANSCRIPTS TO AWS=================
 
+    //ADD IN SAVE TO DATABASE
     async uploadFileToS3(downloadUrl: string, filename: string, firstName: string, lastName: string, fileExtension: string) {
-        const token = this.authService.getAccessToken()
+        const token = await this.authService.getAccessToken()
         const response: AxiosResponse = await firstValueFrom(this.httpService.get(`${downloadUrl}?access_token=${token}`, {
             responseType: 'arraybuffer'
         }));
     
         const s3ObjectKey = `${firstName}_${lastName}/${filename}.${fileExtension}`;
     
-        await this.s3.putObject({
+        const s3Response = await this.s3.putObject({
             Bucket: this.configService.get<string>('S3_BUCKET_NAME'),
             Key: s3ObjectKey,
             Body: response.data
         }).promise();
     
-        console.log(`${filename} uploaded successfully to S3 in folder ${firstName}_${lastName} with object key: ${s3ObjectKey}.`);
+        console.log(`${filename} uploaded successfully to S3.`, s3Response);
+
+        return s3Response
     }
-    
     async migrateFilesToAWS(jsonData: any, firstName: string, lastName: string, userId: string) {
         for (const meeting of jsonData.meetings) {
             for (const recording of meeting.recording_files) {

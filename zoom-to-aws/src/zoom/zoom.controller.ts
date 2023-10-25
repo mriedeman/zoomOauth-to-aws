@@ -61,5 +61,19 @@ export class ZoomController {
         await this.zoomService.batchWeeklyDataTransfer(startDate, endDate)
         return {message: `Data Migration Initiated for Recording Files named: ${startDate} to ${endDate}.json`}
     }
+
+
+    @Get('upload-single-video-to-s3')
+    async uploadSingleVideoToS3(): Promise<any>{
+        const downloadURL = "https://kpconnect.zoom.us/rec/download/sx5SVqij-T6C9BwMx8hDbILdUCUEmFcuRaXrCxemZFYcYneksF97O1pcrI9oCOhhvmjTklkASWhnM1PU.iNQIQF3ZN0I55r2X"
+        const fileName = 'test1'
+        const firstName ='firstNametest1'
+        const lastName = 'lastNametest2'
+        const userID = 'userid1234'
+        const s3Response = await this.zoomService.uploadFileToS3(downloadURL, fileName, firstName, lastName, userID)
+        console.log('Response from S:', s3Response)
+        return {message: 'Response from S3',
+                s3Response}
+    }
     
 }

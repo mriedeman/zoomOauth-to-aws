@@ -11,6 +11,7 @@ import { VttController } from './vtt/vtt.controller';
 import {TypeOrmModule} from '@nestjs/typeorm'
 import { TransactionLogger } from './database-logger/database-logger.entity'; 
 import { TransactionLoggerModule } from './database-logger/database-logger.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [HttpModule,
@@ -35,9 +36,10 @@ import { TransactionLoggerModule } from './database-logger/database-logger.modul
               }),
               inject: [ConfigService],
             }),
-            TransactionLoggerModule
+            TransactionLoggerModule,
+            AuthModule
   ],
   controllers: [AppController, ZoomController, VttController],
-  providers: [AppService, ZoomService, AuthService, VttService],
+  providers: [AppService, ZoomService, VttService],
 })
 export class AppModule {}
